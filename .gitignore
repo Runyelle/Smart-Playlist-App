@@ -7,6 +7,9 @@ backend/node_modules/
 .env
 .env.local
 .env*.local
+.env.bak
+.env*.bak
+backend/.env.bak*
 
 # Build outputs
 frontend/.next/
