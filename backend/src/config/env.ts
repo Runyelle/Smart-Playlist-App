@@ -1,8 +1,16 @@
 import { z } from 'zod';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-// Load environment variables
-dotenv.config();
+// Get the directory of the current module
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load environment variables from root .env file only
+// backend/src/config/env.ts -> backend/ -> root/
+const rootEnvPath = path.resolve(__dirname, '../../..', '.env');
+dotenv.config({ path: rootEnvPath });
 
 /**
  * Environment configuration schema with zod validation
@@ -29,11 +37,30 @@ const envSchema = z.object({
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 
   // AI Provider
-  AI_PROVIDER: z.enum(['musicgen', 'none']).default('musicgen'),
-  MUSICGEN_MODE: z.enum(['hf_api', 'local']).default('hf_api'),
+  AI_PROVIDER: z.enum(['stable_audio', 'musicgen', 'none']).default('stable_audio'),
 
-  // Hugging Face API
+  // Stable Audio (required when AI_PROVIDER=stable_audio)
+  // fal.ai configuration
+  FAL_KEY: z.string().optional(),
+  FAL_STABLE_AUDIO_MODEL: z.string().default('fal-ai/stable-audio'),
+  // Legacy metadata (kept for documentation)
+  STABLE_AUDIO_MODEL_ID: z.string().default('stabilityai/stable-audio-open-1.0'),
   HUGGINGFACE_API_KEY: z.string().optional(),
+
+  // Legacy MusicGen support (deprecated - only used when AI_PROVIDER=musicgen)
+  // Ignore invalid values since we're using stable_audio now
+  MUSICGEN_MODE: z
+    .string()
+    .optional()
+    .transform((val) => {
+      // Only accept valid values, ignore invalid/legacy ones
+      if (!val) return undefined;
+      if (['hf_api', 'local', 'none'].includes(val)) {
+        return val as 'hf_api' | 'local' | 'none';
+      }
+      // Invalid value - return undefined to ignore it
+      return undefined;
+    }),
   MUSICGEN_MODEL_ID: z.string().default('facebook/musicgen-small'),
   MUSICGEN_ENDPOINT: z.string().url().optional(),
 
@@ -43,6 +70,24 @@ const envSchema = z.object({
 
   // File storage
   TRANSITIONS_DIR: z.string().default('./tmp/transitions'),
+}).superRefine((data, ctx) => {
+  // Validate Stable Audio config when provider is stable_audio
+  if (data.AI_PROVIDER === 'stable_audio') {
+    if (!data.FAL_KEY) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'FAL_KEY is required when AI_PROVIDER=stable_audio. Please set it in your .env file.',
+        path: ['FAL_KEY'],
+      });
+    }
+    if (!data.FAL_STABLE_AUDIO_MODEL) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'FAL_STABLE_AUDIO_MODEL is required when AI_PROVIDER=stable_audio',
+        path: ['FAL_STABLE_AUDIO_MODEL'],
+      });
+    }
+  }
 });
 
 /**
@@ -55,5 +100,4 @@ export const env = envSchema.parse(process.env);
  * Type-safe environment configuration
  */
 export type Env = z.infer<typeof envSchema>;
-
 

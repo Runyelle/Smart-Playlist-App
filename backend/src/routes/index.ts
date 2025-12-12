@@ -119,6 +119,11 @@ router.get('/', (_req: Request, res: Response) => {
           path: '/transitions/:transitionId',
           description: 'Serve generated transition audio file',
         },
+        status: {
+          method: 'GET',
+          path: '/transitions/status/:transitionId',
+          description: 'Get status of transition generation (PENDING, READY, FAILED)',
+        },
       },
     },
     documentation: 'See README.md for detailed API documentation',
@@ -131,9 +136,9 @@ router.use('/auth', authRoutes);
 router.use('/spotify', spotifyRoutes);
 
 // Debug: Log transitions route registration
-console.log('Registering transitions routes at /transitions');
+console.log('🟢 Registering transitions routes at /transitions');
 router.use('/transitions', transitionsRoutes);
-console.log('Transitions routes registered');
+console.log('🟢 Transitions routes registered successfully');
 
 export default router;
 

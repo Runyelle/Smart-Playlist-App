@@ -5,7 +5,7 @@ Production-quality MVP backend for the Smart Playlist App, built with Node.js, E
 ## Features
 
 - **Spotify OAuth Integration**: PKCE flow for secure authentication
-- **MusicGen Integration**: Generate original transition audio clips using Meta MusicGen via Hugging Face API
+- **AI-Powered Transitions**: Generate original transition audio clips using fal.ai's Stable Audio API
 - **Caching**: LRU cache for generated transitions to avoid regeneration
 - **Security**: Helmet, CORS, rate limiting, request validation
 - **Logging**: Structured logging with Pino
@@ -77,7 +77,7 @@ backend/
 
 - Node.js 18+ and npm
 - Spotify Developer Account
-- Hugging Face Account (for MusicGen API)
+- fal.ai Account (for Stable Audio API)
 
 ### Installation
 
@@ -94,7 +94,7 @@ backend/
 3. **Configure `.env` file:**
    - `SPOTIFY_CLIENT_ID`: Get from [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
    - `SPOTIFY_REDIRECT_URI`: Must match your registered redirect URI in Spotify Dashboard
-   - `HUGGINGFACE_API_KEY`: Get from [Hugging Face Settings](https://huggingface.co/settings/tokens)
+   - `FAL_KEY`: Get from [fal.ai Dashboard](https://fal.ai/dashboard/keys)
    - `SESSION_SECRET`: Generate with `openssl rand -base64 32`
    - `JWT_SECRET`: Generate with `openssl rand -base64 32`
 
@@ -139,6 +139,7 @@ npm test
 
 - `POST /transitions/generate` - Generate or retrieve cached transition
 - `GET /transitions/:transitionId` - Serve generated transition audio file
+- `GET /transitions/status/:transitionId` - Get status of transition generation (PENDING, READY, FAILED)
 
 ## OAuth Flow
 
@@ -153,21 +154,31 @@ The backend implements Spotify OAuth 2.0 with PKCE (Proof Key for Code Exchange)
 7. Frontend uses access token for API calls
 8. When access token expires, frontend calls `POST /auth/spotify/refresh` with session token
 
-## MusicGen Integration
+## AI Audio Generation Integration
 
-The backend supports two modes for MusicGen:
+The backend uses **fal.ai's Stable Audio API** for generating transition audio.
 
-### Hugging Face API Mode (Recommended for MVP)
+### Stable Audio (Default)
 
-- Uses Hugging Face Inference API
-- No local GPU required
-- Set `MUSICGEN_MODE=hf_api` and provide `HUGGINGFACE_API_KEY`
+- Uses fal.ai's Stable Audio API (`fal-ai/stable-audio` model)
+- No AWS infrastructure required
+- Simple API integration with `@fal-ai/client`
+- Set `AI_PROVIDER=stable_audio` (default) and configure:
+  - `FAL_KEY`: Your fal.ai API key
+  - `FAL_STABLE_AUDIO_MODEL`: Model ID (default: `fal-ai/stable-audio`)
 
-### Local Service Mode (Optional)
+**Required Environment Variables:**
+- `FAL_KEY` - Your fal.ai API key (get from [fal.ai Dashboard](https://fal.ai/dashboard/keys))
+- `FAL_STABLE_AUDIO_MODEL` - Model ID (defaults to `fal-ai/stable-audio`)
 
-- Requires a local Python FastAPI service
-- See `/ai` directory for service skeleton
-- Set `MUSICGEN_MODE=local`
+**Note**: Make sure you have credits in your fal.ai account. Add credits at [fal.ai Dashboard > Billing](https://fal.ai/dashboard/billing).
+
+### Legacy Support (Deprecated)
+
+The backend still supports legacy MusicGen modes for backward compatibility, but they are deprecated:
+
+- **MusicGen Mode**: Set `AI_PROVIDER=musicgen` and `MUSICGEN_MODE=hf_api` (requires `HUGGINGFACE_API_KEY`)
+- **Local Service Mode**: Set `AI_PROVIDER=musicgen` and `MUSICGEN_MODE=local` (requires local Python FastAPI service)
 
 ### Prompt Generation
 
@@ -217,14 +228,24 @@ See `example.env` for all available environment variables.
 
 ### Optional
 
-- `HUGGINGFACE_API_KEY` (required if `MUSICGEN_MODE=hf_api`)
-- `MUSICGEN_MODE` (default: `hf_api`)
+- `AI_PROVIDER` (default: `stable_audio`, options: `stable_audio`, `musicgen`, `none`)
 - `DEFAULT_TRANSITION_SECONDS` (default: `5`)
 - `DEFAULT_TRANSITION_STYLE` (default: `ambient`)
 
+### Required for Stable Audio Mode (`AI_PROVIDER=stable_audio`)
+
+- `FAL_KEY` - Your fal.ai API key (get from [fal.ai Dashboard](https://fal.ai/dashboard/keys))
+- `FAL_STABLE_AUDIO_MODEL` - Model ID (defaults to `fal-ai/stable-audio`)
+
+**Important**: Ensure you have credits in your fal.ai account. Add credits at [fal.ai Dashboard > Billing](https://fal.ai/dashboard/billing).
+
+### Required for Legacy MusicGen Mode (`AI_PROVIDER=musicgen` and `MUSICGEN_MODE=hf_api`)
+
+- `HUGGINGFACE_API_KEY` - Hugging Face API token (deprecated)
+
 ## License Note
 
-**IMPORTANT**: MusicGen is licensed for non-commercial use only. This MVP is intended for portfolio/class project purposes. For commercial use, you must obtain appropriate licensing or use alternative audio generation solutions.
+**IMPORTANT**: This MVP uses fal.ai's Stable Audio API which requires credits. Ensure you have sufficient balance in your fal.ai account for generating transitions.
 
 ## Development Notes
 

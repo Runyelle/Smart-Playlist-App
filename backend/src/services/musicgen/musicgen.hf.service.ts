@@ -32,6 +32,10 @@ export async function generateWithHF(
   const prompt = buildMusicGenPrompt(promptParams);
 
   // Build endpoint URL
+  // Hugging Face has migrated to router-based Inference Providers API
+  // Old endpoint (api-inference.huggingface.co) returns 410 Gone
+  // New format: https://router.huggingface.co/<provider>/models/<model-id>
+  // For Hugging Face's own inference service, use 'hf-inference' as provider
   const endpoint =
     env.MUSICGEN_ENDPOINT ||
     `https://router.huggingface.co/hf-inference/models/${env.MUSICGEN_MODEL_ID}`;
@@ -88,7 +92,7 @@ export async function generateWithHF(
           
           // Handle specific Hugging Face API errors
           if (response.status === 410) {
-            errorMessage = `The model endpoint "${env.MUSICGEN_MODEL_ID}" is no longer available. The model may have been deprecated or removed. Please check your MUSICGEN_MODEL_ID configuration.`;
+            errorMessage = `The endpoint is no longer available (410 Gone). This model may require a dedicated Inference Endpoint. Please create one at https://huggingface.co/inference-endpoints and set MUSICGEN_ENDPOINT in your .env file.`;
             statusCode = 410;
           } else if (errorMessage.includes('Model') && errorMessage.includes('loading')) {
             errorMessage = 'The AI model is currently loading. Please try again in a few moments.';

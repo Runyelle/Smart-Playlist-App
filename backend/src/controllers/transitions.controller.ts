@@ -2,15 +2,33 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import { logger } from '../utils/logger.js';
 import { sendSuccess, sendError } from '../utils/http.js';
-import { NotFoundError, MusicGenError } from '../utils/errors.js';
+import { NotFoundError, MusicGenError, AuthenticationError } from '../utils/errors.js';
 import { generateOrGetTransition } from '../services/transitions.service.js';
 import { readAudioFile } from '../utils/file.js';
+import { getTransitionStatus as getTransitionStatusData } from '../services/transition-status.service.js';
 import type { TransitionRequest } from '../models/transition.model.js';
 
 /**
  * Transitions controller
  * Handles transition generation and serving
  */
+
+/**
+ * Extract access token from request
+ * Can come from Authorization header or body
+ */
+function getAccessToken(req: Request): string {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.substring(7);
+  }
+
+  if (req.body?.accessToken) {
+    return req.body.accessToken;
+  }
+
+  throw new AuthenticationError('Access token required');
+}
 
 // Validation schema for transition generation
 const transitionRequestSchema = z.object({
@@ -44,6 +62,9 @@ export async function postGenerateTransition(
   res: Response
 ): Promise<void> {
   try {
+    // Require authentication
+    getAccessToken(req);
+    
     const request = transitionRequestSchema.parse(req.body);
     
     logger.info(
@@ -63,7 +84,9 @@ export async function postGenerateTransition(
     logger.error({ error }, 'Failed to generate transition');
     console.error('Transition generation error:', error);
     
-    if (error instanceof z.ZodError) {
+    if (error instanceof AuthenticationError) {
+      sendError(res, error.message, error.statusCode, error.code);
+    } else if (error instanceof z.ZodError) {
       const message = error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ');
       console.error('Validation error details:', message);
       sendError(res, 'Invalid request data', 400, 'VALIDATION_ERROR');
@@ -112,6 +135,10 @@ export async function getTransition(
       res.setHeader('Content-Type', 'audio/wav');
       res.setHeader('Content-Length', audioBuffer.length);
       res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
+      // Allow cross-origin access for audio files
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+      res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+      res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Type');
 
       res.send(audioBuffer);
     } catch (error) {
@@ -124,6 +151,42 @@ export async function getTransition(
     } else {
       sendError(res, 'Failed to serve transition', 500);
     }
+  }
+}
+
+/**
+ * GET /transitions/status/:transitionId
+ * Get the status of a transition generation request
+ */
+export async function getTransitionStatus(
+  req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    const { transitionId } = req.params;
+
+    if (!transitionId) {
+      sendError(res, 'Transition ID is required', 400, 'VALIDATION_ERROR');
+      return;
+    }
+
+    const status = getTransitionStatusData(transitionId);
+
+    if (!status) {
+      sendError(res, `Transition ${transitionId} not found`, 404, 'NOT_FOUND');
+      return;
+    }
+
+    sendSuccess(res, {
+      status: status.status,
+      transitionId: status.transitionId,
+      createdAt: status.createdAt,
+      completedAt: status.completedAt,
+      error: status.error,
+    });
+  } catch (error) {
+    logger.error({ error, transitionId: req.params.transitionId }, 'Failed to get transition status');
+    sendError(res, 'Failed to get transition status', 500);
   }
 }
 

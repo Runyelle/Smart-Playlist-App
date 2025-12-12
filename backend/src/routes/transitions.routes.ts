@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   postGenerateTransition,
   getTransition,
+  getTransitionStatus,
 } from '../controllers/transitions.controller.js';
 import { validateBody } from '../middlewares/validate.middleware.js';
 import { transitionLimiter, apiLimiter } from '../middlewares/rateLimit.middleware.js';
@@ -10,13 +11,17 @@ import { z } from 'zod';
 const router = Router();
 
 // Debug middleware to log all requests
-router.use((req, res, next) => {
-  console.log('Transitions router - Request received:', {
+router.use((req, _res, next) => {
+  console.log('🔵 Transitions router - Request received:', {
     method: req.method,
     path: req.path,
     url: req.url,
     originalUrl: req.originalUrl,
     baseUrl: req.baseUrl,
+    headers: {
+      'content-type': req.headers['content-type'],
+      'authorization': req.headers['authorization'] ? 'Bearer ***' : 'none',
+    },
   });
   next();
 });
@@ -52,7 +57,7 @@ const transitionRequestSchema = z.object({
  */
 router.post(
   '/generate',
-  (req, res, next) => {
+  (req, _res, next) => {
     console.log('POST /transitions/generate route hit', {
       method: req.method,
       path: req.path,
@@ -68,10 +73,18 @@ router.post(
 );
 
 /**
+ * GET /transitions/status/:transitionId
+ * Get the status of a transition generation request
+ * Uses general rate limiting
+ * IMPORTANT: This must be defined BEFORE the GET /:transitionId route
+ */
+router.get('/status/:transitionId', apiLimiter, getTransitionStatus);
+
+/**
  * GET /transitions/:transitionId
  * Serve generated transition audio file
  * Uses general rate limiting
- * IMPORTANT: This must be defined AFTER the POST /generate route
+ * IMPORTANT: This must be defined AFTER the POST /generate and /status routes
  */
 router.get('/:transitionId', apiLimiter, getTransition);
 

@@ -4,6 +4,11 @@ import { cacheService } from './cache.service.js';
 import { generateTransition } from './musicgen/musicgen.provider.js';
 import { saveAudioFile, audioFileExists } from '../utils/file.js';
 import { generateRandomString } from '../utils/crypto.js';
+import {
+  setTransitionStatus,
+  markTransitionReady,
+  markTransitionFailed,
+} from './transition-status.service.js';
 import type { TransitionRequest, TransitionResponse } from '../models/transition.model.js';
 
 /**
@@ -13,6 +18,7 @@ import type { TransitionRequest, TransitionResponse } from '../models/transition
 
 /**
  * Create a deterministic cache key from transition request
+ * Includes all parameters that affect the output: tracks, duration, style, and all overrides
  */
 export function createCacheKey(request: TransitionRequest): string {
   const keyParts = [
@@ -20,9 +26,10 @@ export function createCacheKey(request: TransitionRequest): string {
     request.trackB.id,
     request.seconds || 5,
     request.style || 'ambient',
-    request.overrides?.tempo || '',
-    request.overrides?.energy || '',
-    request.overrides?.speed || '',
+    // Include all override values (even if undefined, to ensure consistent hashing)
+    request.overrides?.tempo?.toString() || '',
+    request.overrides?.energy?.toString() || '',
+    request.overrides?.speed?.toString() || '',
   ];
 
   const keyString = keyParts.join('|');
@@ -65,10 +72,15 @@ export async function generateOrGetTransition(
 
   // Generate new transition
   logger.info({ cacheKey, request }, 'Generating new transition');
-  const audioBuffer = await generateTransition(request);
 
-  // Save to file
+  // Generate transition ID early to track status
   const transitionId = generateTransitionId();
+  setTransitionStatus(transitionId, 'PENDING');
+
+  try {
+    const audioBuffer = await generateTransition(request);
+
+    // Save to file
   const filename = `${transitionId}.wav`;
   await saveAudioFile(filename, audioBuffer);
 
@@ -79,6 +91,9 @@ export async function generateOrGetTransition(
     createdAt: Date.now(),
   });
 
+    // Mark as ready
+    markTransitionReady(transitionId);
+
   logger.info({ transitionId, cacheKey }, 'Transition generated and cached');
 
   return {
@@ -86,6 +101,12 @@ export async function generateOrGetTransition(
     url: `/transitions/${transitionId}`,
     cached: false,
   };
+  } catch (error) {
+    // Mark as failed
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    markTransitionFailed(transitionId, errorMessage);
+    throw error;
+  }
 }
 
 

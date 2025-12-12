@@ -16,7 +16,13 @@ export function createApp(): express.Application {
   const app = express();
 
   // Security middleware
-  app.use(helmet());
+  // Configure Helmet to allow cross-origin requests for audio files
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allow audio files to be loaded cross-origin
+      crossOriginEmbedderPolicy: false, // Disable COEP to allow audio playback
+    })
+  );
 
   // CORS
   app.use(cors(corsOptions));
@@ -47,8 +53,15 @@ export function createApp(): express.Application {
   // API routes
   app.use('/', routes);
 
-  // 404 handler
-  app.use((_req, res) => {
+  // Debug middleware to log 404s
+  app.use((req, res) => {
+    console.log('🔴 404 Handler - Route not found:', {
+      method: req.method,
+      url: req.url,
+      originalUrl: req.originalUrl,
+      path: req.path,
+      baseUrl: req.baseUrl,
+    });
     res.status(404).json({
       success: false,
       error: {

@@ -43,19 +43,19 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted/20 p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/30 p-4">
+      <Card className="w-full max-w-md border-border/50 shadow-xl">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/20">
             <Music2 className="h-8 w-8 text-primary" />
           </div>
-          <CardTitle className="text-3xl">Smart Playlist</CardTitle>
-          <CardDescription className="text-base">
+          <CardTitle className="text-3xl font-bold">Smart Playlist</CardTitle>
+          <CardDescription className="text-base text-muted-foreground mt-2">
             Generate AI-powered transitions between your favorite tracks
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Button onClick={handleConnectSpotify} disabled={isLoading} className="w-full" size="lg">
+          <Button onClick={handleConnectSpotify} disabled={isLoading} className="w-full font-semibold" size="lg">
             {isLoading ? "Connecting..." : "Connect Spotify"}
           </Button>
           {error && <p className="text-sm text-destructive text-center">{error}</p>}

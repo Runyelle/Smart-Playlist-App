@@ -84,9 +84,9 @@ export function TransitionsPanel({ tracks }: TransitionsPanelProps) {
 
   return (
     <div className="space-y-4">
-      <Card>
+      <Card className="border-border/50">
         <CardHeader>
-          <CardTitle className="text-base">Transition Settings</CardTitle>
+          <CardTitle className="text-base font-semibold">Transition Settings</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -122,10 +122,10 @@ export function TransitionsPanel({ tracks }: TransitionsPanelProps) {
         const state = transitions.get(key)
 
         return (
-          <Card key={key}>
+          <Card key={key} className="border-border/50">
             <CardHeader>
-              <CardTitle className="text-sm">Transition {index + 1}</CardTitle>
-              <CardDescription className="text-xs">
+              <CardTitle className="text-sm font-semibold">Transition {index + 1}</CardTitle>
+              <CardDescription className="text-xs text-muted-foreground">
                 {trackA.name} → {trackB.name}
               </CardDescription>
             </CardHeader>

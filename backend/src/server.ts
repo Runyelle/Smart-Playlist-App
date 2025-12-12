@@ -26,6 +26,14 @@ async function startServer(): Promise<void> {
       );
     });
 
+    // Set server timeout to 6 minutes (360000ms) to handle AI audio generation
+    // Audio generation can take 2-5+ minutes, so we need a longer timeout
+    server.timeout = 360000; // 6 minutes
+    server.keepAliveTimeout = 360000; // 6 minutes
+    server.headersTimeout = 360000; // 6 minutes
+    
+    logger.info({ timeout: '6 minutes' }, 'Server timeout configured for async operations');
+
     // Graceful shutdown
     const shutdown = () => {
       logger.info('Shutting down server...');
