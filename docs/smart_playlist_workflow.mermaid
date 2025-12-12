@@ -1,0 +1,44 @@
+flowchart TD
+    Start([User Opens App]) --> Auth{Spotify OAuth<br/>Auth Code + PKCE}
+    Auth -->|Access Token| FetchPlaylists[Fetch User Playlists<br/>Spotify Web API]
+    FetchPlaylists --> SelectPlaylist{User Selects<br/>Playlist}
+    SelectPlaylist --> FetchTracks[Fetch Playlist Tracks<br/>Spotify Web API]
+    FetchTracks --> LoadSettings{Load Saved Settings<br/>per Track}
+    LoadSettings -->|MVP| LocalStorage[localStorage]
+    LoadSettings -->|v1.1 Optional| BackendDB[(Backend DB<br/>SQLite/Postgres<br/>+ Prisma)]
+    LocalStorage --> ProcessPairs[Process Track Pairs<br/>A → B]
+    BackendDB --> ProcessPairs
+    
+    ProcessPairs --> DetermineInputs[Determine Tempo/Energy<br/>User Override or<br/>App Estimate]
+    DetermineInputs --> CheckCache{Check Cache<br/>LRU/Redis}
+    CheckCache -->|Hit| UseCached[Use Cached Transition]
+    CheckCache -->|Miss| Generate[Generate Transition Audio<br/>3-8 sec<br/>DSP/Music-gen API]
+    Generate --> CacheResult[Cache Result]
+    CacheResult --> Preview
+    UseCached --> Preview
+    
+    Preview[Preview Experience<br/>Web Audio API] --> PreviewMode{Playback Mode}
+    PreviewMode -->|Standard| InAppPlay[Play Transition Clip<br/>+ Spotify Links]
+    PreviewMode -->|Premium Optional| SDKPlay[Web Playback SDK<br/>Play A → Transition → B]
+    
+    InAppPlay --> UserEdit{User Edits<br/>Settings?}
+    SDKPlay --> UserEdit
+    UserEdit -->|Yes| EditSettings[Edit Tempo/Energy/Speed<br/>Frontend UI]
+    EditSettings --> SaveSettings[Save Settings]
+    SaveSettings --> SaveTarget{Save Target}
+    SaveTarget -->|MVP| SaveLocal[localStorage]
+    SaveTarget -->|v1.1| SaveDB[(Backend DB)]
+    SaveLocal --> ProcessPairs
+    SaveDB --> ProcessPairs
+    
+    UserEdit -->|No| OptionalExport{Create Enhanced<br/>Playlist?}
+    OptionalExport -->|Yes| CreatePlaylist[Create Metadata Playlist<br/>Spotify Web API]
+    OptionalExport -->|No| End([End Session])
+    CreatePlaylist --> End
+    
+    style Auth fill:#4a9eff,color:#fff
+    style Generate fill:#ffb347,color:#000
+    style BackendDB fill:#7b68ee,color:#fff
+    style SaveDB fill:#7b68ee,color:#fff
+    style SDKPlay fill:#32cd32,color:#000
+

@@ -2,6 +2,14 @@
 
 A smart playlist application that generates AI-powered transitions between Spotify tracks, built with Next.js, React, TypeScript, and Express. Features a Spotify-inspired dark theme UI with seamless audio transitions.
 
+## 🎥 Demo Video
+
+Watch the demo: [YouTube Video](https://www.youtube.com/watch?v=We_iN7pAO48)
+
+## 📊 Workflow Diagram
+
+See the application workflow: [`docs/smart_playlist_workflow.mermaid`](./docs/smart_playlist_workflow.mermaid)
+
 ## Features
 
 - 🎵 **Spotify Integration**: Connect your Spotify account via OAuth (PKCE flow)
